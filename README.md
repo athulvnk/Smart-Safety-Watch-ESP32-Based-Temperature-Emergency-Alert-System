@@ -1,0 +1,1 @@
+# Smart-Safety-Watch-ESP32-Based-Temperature-Emergency-Alert-System
