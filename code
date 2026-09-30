@@ -1,0 +1,183 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_MAX30205.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+#define OLED_RESET -1
+#define OLED_ADDRESS 0x3C
+
+#define EMERGENCY_BUTTON 4
+#define BUZZER_PIN 25
+#define VIBRATION_PIN 26
+
+#define HIGH_TEMP 38.0
+#define LOW_TEMP 35.0
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_MAX30205 tempSensor;
+
+bool emergencyMode = false;
+
+void setup() {
+
+  Serial.begin(115200);
+
+  pinMode(EMERGENCY_BUTTON, INPUT_PULLUP);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(VIBRATION_PIN, OUTPUT);
+
+  digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(VIBRATION_PIN, LOW);
+
+  // OLED initialization
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+    Serial.println("OLED failed!");
+    while (1);
+  }
+
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(1);
+
+  // Temperature sensor
+  if (!tempSensor.begin()) {
+    Serial.println("Temperature sensor failed!");
+    display.setCursor(0, 0);
+    display.println("TEMP SENSOR ERROR");
+    display.display();
+
+    while (1);
+  }
+
+  display.setCursor(0, 0);
+  display.println("Smart Safety Watch");
+  display.println("System Starting...");
+  display.display();
+
+  delay(2000);
+}
+
+void loop() {
+
+  float temperature = tempSensor.getTemperature();
+
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" C");
+
+  // Display temperature
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("SMART SAFETY WATCH");
+
+  display.setTextSize(2);
+  display.setCursor(0, 18);
+  display.print(temperature, 1);
+  display.println(" C");
+
+  display.setTextSize(1);
+
+  // Temperature warning
+  if (temperature >= HIGH_TEMP) {
+
+    display.setCursor(0, 45);
+    display.println("!! HIGH TEMP !!");
+
+    activateWarning();
+
+  }
+  else if (temperature <= LOW_TEMP) {
+
+    display.setCursor(0, 45);
+    display.println("!! LOW TEMP !!");
+
+    activateWarning();
+
+  }
+  else {
+
+    display.setCursor(0, 45);
+    display.println("Temperature Normal");
+
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(VIBRATION_PIN, LOW);
+  }
+
+  display.display();
+
+  // Emergency button
+  if (digitalRead(EMERGENCY_BUTTON) == LOW) {
+
+    emergencyAlert();
+
+    delay(2000);
+  }
+
+  delay(1000);
+}
+
+void activateWarning() {
+
+  // Buzzer
+  digitalWrite(BUZZER_PIN, HIGH);
+
+  // Vibration motor
+  digitalWrite(VIBRATION_PIN, HIGH);
+
+  delay(300);
+
+  digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(VIBRATION_PIN, LOW);
+}
+
+void emergencyAlert() {
+
+  Serial.println("======================");
+  Serial.println("EMERGENCY ALERT!");
+  Serial.println("Emergency button pressed");
+  Serial.println("======================");
+
+  display.clearDisplay();
+
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  display.println("EMERGENCY!");
+
+  display.setTextSize(1);
+  display.setCursor(0, 35);
+  display.println("CONTACTING");
+  display.println("EMERGENCY CONTACT...");
+
+  display.display();
+
+  // Continuous warning vibration/buzzer
+  for (int i = 0; i < 5; i++) {
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    digitalWrite(VIBRATION_PIN, HIGH);
+
+    delay(300);
+
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(VIBRATION_PIN, LOW);
+
+    delay(300);
+  }
+
+  /*
+     Emergency communication can be added here.
+
+     Example:
+     - Bluetooth -> smartphone
+     - Wi-Fi -> Firebase/API
+     - GSM -> SMS
+     - LoRa -> receiver
+  */
+
+  Serial.println("Emergency notification triggered.");
+}
